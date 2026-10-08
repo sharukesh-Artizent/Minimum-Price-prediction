@@ -17,6 +17,7 @@ Assurant / HYLA Offer Clearance engagement, using ADMM over a graph of related S
 | [docs/01-project-context.md](docs/01-project-context.md) | What the engagement is and where the reserve price fits |
 | [docs/02-data-findings.md](docs/02-data-findings.md) | What the data extracts contain, and their limits |
 | [docs/03-admm-design.md](docs/03-admm-design.md) | Phase 1 and Phase 2 formulations (the spec) |
+| [docs/04-results.md](docs/04-results.md) | Phase 1 baseline & Phase 2 ROI experimental results |
 | [docs/superpowers/plans/2026-10-08-admm-reserve-price-poc.md](docs/superpowers/plans/2026-10-08-admm-reserve-price-poc.md) | Task-by-task implementation plan |
 
 ## Data
