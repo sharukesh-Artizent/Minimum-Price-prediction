@@ -11,11 +11,8 @@ from reserve.config import (DATA_START, DECISION_STATUSES, H_GRID, INNER_VALID_D
 from reserve.counter_curve import CounterCurve, fit_counter_curve
 from reserve.economics import continuation_value, estimate_delta, estimate_rho
 from reserve.features import attach_product, build_features
-from reserve.floor_model import FloorModel, XGB_PARAMS
+from reserve.floor_model import FloorModel
 from reserve.labels import floor_bounds, match_offers_to_sales, match_recall
-
-XGB_PARAMS["aft_loss_distribution_scale"] = 0.01
-
 from reserve.loaders import load_all
 from reserve.market import MarketModel, mape, realized_targets
 from reserve.metrics import pareto_segment
@@ -112,8 +109,8 @@ def fit_models(D: Data, cutoff, p: Params) -> Fitted:
     F.bids = BidDist.fit(offers_f, cutoff, p)
 
     bounds = floor_bounds(D.offers).merge(feats, on=KEYS)
-    F.floor = FloorModel().fit(bounds[(bounds.day >= warm) & (bounds.day < inner)],
-                               bounds[(bounds.day >= inner) & (bounds.day < cutoff)])
+    F.floor = FloorModel(scale=0.01).fit(bounds[(bounds.day >= warm) & (bounds.day < inner)],
+                                         bounds[(bounds.day >= inner) & (bounds.day < cutoff)])
 
     F.tau_edges = tau_edges_from(feats[feats.day < cutoff])
     tune = offers_f[(offers_f.day >= inner) & (offers_f.day < cutoff) & offers_f.status.isin(DECISION_STATUSES)]

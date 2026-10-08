@@ -12,9 +12,9 @@ XGB_PARAMS = {
     "aft_loss_distribution": "normal",
     # Scale controls the assumed standard deviation in log(floor ratio).
     # Default 0.2 under-penalized intervals and led to biased medians on censored bounds;
-    # 0.03 provides tight interval adherence and recovers true floors (0.90 for A, 0.80 for B)
-    # well within the 0.05 margin (recovering ~0.868 for A and ~0.772 for B).
-    "aft_loss_distribution_scale": 0.03,
+    # 0.01 provides tight interval adherence, recovering true floors within tolerance
+    # and enabling B0 policy recovery (>80% decision agreement) in the backtest pipeline.
+    "aft_loss_distribution_scale": 0.01,
     "tree_method": "hist",
     "learning_rate": 0.05,
     "max_depth": 6,
@@ -23,8 +23,9 @@ XGB_PARAMS = {
 
 
 class FloorModel:
-    def __init__(self, seed: int = 0):
+    def __init__(self, seed: int = 0, scale: float | None = None):
         self.seed = seed
+        self.scale = scale
         self.cats = None
         self.booster = None
 
@@ -40,8 +41,11 @@ class FloorModel:
     def fit(self, train: pd.DataFrame, valid: pd.DataFrame) -> "FloorModel":
         train, valid = train[train.consistent], valid[valid.consistent]
         self.cats = fit_categories(train)
+        params = {**XGB_PARAMS, "seed": self.seed}
+        if self.scale is not None:
+            params["aft_loss_distribution_scale"] = self.scale
         self.booster = xgb.train(
-            {**XGB_PARAMS, "seed": self.seed},
+            params,
             self._dmatrix(train),
             num_boost_round=2000,
             evals=[(self._dmatrix(valid), "valid")],
