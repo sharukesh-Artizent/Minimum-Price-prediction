@@ -19,7 +19,7 @@ GRADE_RANK = {
 @dataclass(frozen=True)
 class Phase1Config:
     lam: float = 1.0                 # strength of sibling fusion
-    rho: float = 1.0                 # ADMM penalty
+    rho: float = 2.0                 # ADMM penalty
     k_pareto: float = 10.0           # node weight w_i = n_i / (n_i + k)
     temperature: float = 0.03        # logistic softness in log-price units (~3%)
     prior_weight: float = 0.01       # pull toward family median when data and edges are silent
