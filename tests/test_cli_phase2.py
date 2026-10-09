@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 from reserve.cli_phase2 import main
@@ -7,7 +8,7 @@ from reserve.pipeline import prepare, run_phase1, run_phase2
 
 def test_phase2_cli_writes_frontier_replay_and_reserves(data_dir, tmp_path):
     out = tmp_path / "out"
-    table, replays, reserves = main([
+    table, replays, fair, reserves = main([
         "--data-dir", str(data_dir), "--out-dir", str(out), "--train-end", "2025-10-23",
         "--train-days", "5", "--test-days", "3", "--multipliers", "0", "1.2"])
     for name in ("phase2_frontier.csv", "phase2_replay.csv", "phase2_replay_fair.csv", "phase2_reserves.csv"):
@@ -15,6 +16,8 @@ def test_phase2_cli_writes_frontier_replay_and_reserves(data_dir, tmp_path):
     assert table["multiplier"].tolist() == [0.0, 1.2]
     assert replays["policy"].tolist() == [
         "assurant_actual", "phase1_floor", "phase2_x0.0", "phase2_x1.2"]
+    assert "salvage" not in replays.columns
+    assert fair["salvage"].tolist() == [1.0] * 4 + [0.9] * 4 + [0.8] * 4
     assert len(reserves) == 1
 
 
@@ -26,15 +29,15 @@ def test_run_phase2_empty_multipliers_raises_value_error(data_dir):
         run_phase2(ctx, phase1, p1, p2, [])
 
 
-def test_phase2_cli_fair_replay(data_dir, tmp_path):
+def test_phase2_cli_salvage_levels_scale_only_terminal_value(data_dir, tmp_path):
     out = tmp_path / "out"
-    table, replays, reserves = main([
+    _, _, fair, _ = main([
         "--data-dir", str(data_dir), "--out-dir", str(out), "--train-end", "2025-10-23",
-        "--train-days", "5", "--test-days", "3", "--multipliers", "0", "1.2",
-        "--fair-replay"])
-    for name in ("phase2_frontier.csv", "phase2_replay.csv", "phase2_replay_fair.csv", "phase2_reserves.csv"):
-        assert (out / name).exists()
-    assert replays["policy"].tolist() == [
-        "assurant_actual", "phase1_floor", "phase2_x0.0", "phase2_x1.2"]
+        "--train-days", "5", "--test-days", "3", "--multipliers", "0", "--salvage", "1.0", "0.5"])
+    full = fair[fair["salvage"] == 1.0].reset_index(drop=True)
+    half = fair[fair["salvage"] == 0.5].reset_index(drop=True)
+    assert full["policy"].tolist() == half["policy"].tolist()
+    assert (full["revenue"] == half["revenue"]).all()
+    assert np.allclose(half["terminal_value"], 0.5 * full["terminal_value"])
 
 

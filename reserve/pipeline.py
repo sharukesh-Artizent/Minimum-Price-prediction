@@ -103,10 +103,12 @@ def compute_replays(ctx: Context, phase1: Phase1Output, results: dict,
 
 
 def run_phase2(ctx: Context, phase1: Phase1Output, p1: Phase1Config, p2: Phase2Config,
-               multipliers: list[float],
-               fair_replay: bool = False,
-               return_both: bool = False) -> tuple:
-    """Returns (frontier table, replay table, per-node reserves at multiplier 0)."""
+               multipliers: list[float], salvage_levels: list[float] = (1.0,),
+               ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Returns (frontier, baseline replay, fair replay, per-node reserves at multiplier 0).
+
+    The fair replay has one block of policy rows per salvage level, tagged in `salvage`.
+    """
     if not multipliers:
         raise ValueError("multipliers list must not be empty")
     train_days = (ctx.train_end - ctx.train_start).days
@@ -120,8 +122,12 @@ def run_phase2(ctx: Context, phase1: Phase1Output, p1: Phase1Config, p2: Phase2C
                            warehouse, p2)
     table, results = frontier(econ, ctx.graph, multipliers, p2)
 
-    replays = compute_replays(ctx, phase1, results, inventory, demand.value, delta,
-                              horizon, fair=fair_replay)
+    replays = compute_replays(ctx, phase1, results, inventory, demand.value, delta, horizon)
+    fair_replays = pd.concat(
+        [compute_replays(ctx, phase1, results, inventory, demand.value, delta, horizon,
+                         fair=True, salvage_factor=s).assign(salvage=s)
+         for s in salvage_levels],
+        ignore_index=True)
 
     first = results[multipliers[0]]
     reserves = ctx.nodes[["sku", "warehouse", "family", "grade", "capacity_gb"]].copy()
@@ -131,8 +137,4 @@ def run_phase2(ctx: Context, phase1: Phase1Output, p1: Phase1Config, p2: Phase2C
     reserves["continuation_value"] = econ.continuation
     reserves["expected_units"] = first.sold
     reserves["warehouse_dual"] = first.dual[warehouse]
-    if return_both:
-        fair_replays = compute_replays(ctx, phase1, results, inventory, demand.value, delta,
-                                       horizon, fair=True)
-        return table, replays, reserves, fair_replays
-    return table, replays, reserves
+    return table, replays, fair_replays, reserves

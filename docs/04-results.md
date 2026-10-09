@@ -69,7 +69,7 @@ Replaying the 14-day hold-out period (2026-03-26 to 2026-04-09) against actual i
 
 #### Why the Baseline Numbers are Artificially Inflated
 The apparent headline revenue gain ($55.7M vs $31.9M) reflects three structural artifacts of the baseline setup:
-1. **Stock stand-in is overstated:** Inventory was proxied by total historical sales (329K units), which includes non-offer channels (enterprise contracts, direct retail). Assurant's accepted offer volume in this window was only 122K units. The unscaled replay allowed Phase 2 to "sell" inventory the offer channel never possessed.
+1. **Stock stand-in is overstated:** Inventory was proxied by total historical sales (329K units), which includes non-offer channels. Assurant's accepted offer volume in this window was only 122K units. The unscaled replay allowed Phase 2 to "sell" inventory the offer channel never possessed.
 2. **Counters are ignored:** The baseline credited Assurant only for bids marked `ACCEPTED`. In reality, Assurant countered heavily, and ~89% of those counter-offers were redeemed at an average +4.1% markup over the buyer's bid. The baseline thus discarded substantial revenue Assurant actually earned.
 3. **Leftover stock valuation:** Unsold units were marked at depreciated expected bid value, meaning artificial inventory volume drove terminal value.
 
@@ -97,7 +97,7 @@ To investigate performance under tighter constraints, a fair backtest was constr
 
 The apparent total recovery of Phase 2 (\$34.02M vs Assurant's \$33.69M) is fragile and entirely dependent on the assumption that unsold inventory retains 100% of its depreciated expected bid value two weeks later.
 
-Testing total value recovery across salvage valuation discounts:
+Testing total value recovery across salvage valuation discounts (reproduce with `python -m reserve.cli_phase2`; the default `--salvage 1.0 0.9 0.8` writes one block per level to `outputs/phase2_replay_fair.csv`, tagged in the `salvage` column):
 
 | Leftover Stock Valued At | Assurant Actual | Phase 1 Floor | Phase 2 $\times$0.0 |
 |---|---|---|---|
@@ -106,7 +106,7 @@ Testing total value recovery across salvage valuation discounts:
 | **80% of mean bid** | **\$33.15M** | \$29.25M | \$31.83M |
 
 #### Unit Economics and Honest Assessment:
-1. **Realization and volume:** Assurant actually sells **107,088 units** at an average realization of **\$289.54 per unit** (\$31.01M revenue). In contrast, Phase 2 ($\times$0.0) sells only **82,971 units** at an average of **\$277.86 per unit** (\$23.05M revenue).
+1. **Realization and volume:** In the fair replay, Assurant's policy sells **107,088 units** at an average realization of **\$289.54 per unit** (\$31.01M revenue). In contrast, Phase 2 ($\times$0.0) sells only **82,971 units** at an average of **\$277.86 per unit** (\$23.05M revenue).
 2. **Leftover inventory overhang:** Phase 2 leaves behind **24,117 more unsold units** than Assurant.
 3. **Valuation artifact:** Phase 2 only "wins" at 100% salvage because every unsold unit is marked at the full average bid. As soon as a realistic 10% salvage/liquidation discount is applied to unsold stock, Assurant clearly beats Phase 2 (\$33.42M vs \$32.93M). At an 80% valuation, Assurant outperforms Phase 2 by \$1.32M.
 4. **Conclusion:** **Phase 2 does not beat Assurant on this hold-out test.** The POC proves the algorithmic mechanics—the ADMM formulation solves at scale, shifts reserves directionally by inventory depth, and provides a controllable clearance knob—but it does *not* demonstrate an economic dollar lift over Assurant's actual decision process.
