@@ -60,17 +60,22 @@ def test_replay_accept_mask_replays_actual_decisions():
 def test_build_fair_actual_credits_redeemed_counters():
     from reserve.replay import build_fair_actual
     obs = Observations(
-        node=np.zeros(3, dtype=np.int64),
-        log_bid=np.log([100.0, 80.0, 60.0]),
-        accepted=np.array([1.0, 0.0, 0.0]),
-        weight=np.ones(3),
-        qty=np.array([1.0, 1.0, 1.0]),
-        date=np.array(["2026-01-01"] * 3, dtype="datetime64[ns]"),
-        counter_price=np.array([np.nan, 85.0, 65.0]),
-        order_status=np.array(["REDEEMED", "REDEEMED", "NULL"]),
+        node=np.zeros(4, dtype=np.int64),
+        log_bid=np.log([100.0, 80.0, 60.0, 70.0]),
+        accepted=np.array([1.0, 0.0, 0.0, 0.0]),
+        weight=np.ones(4),
+        qty=np.array([1.0, 1.0, 1.0, 1.0]),
+        date=np.array(["2026-01-01"] * 4, dtype="datetime64[ns]"),
+        counter_price=np.array([np.nan, 85.0, 65.0, 75.0]),
+        order_status=np.array(["REDEEMED", "REDEEMED", "NULL", "REDEEMED"]),
+        status=np.array(["ACCEPTED", "COUNTERED", "NOT_ACCEPTED", "NOT_ACCEPTED"]),
     )
     mask, prices = build_fair_actual(obs)
-    assert mask.tolist() == [True, True, False]
+    # Row 0: ACCEPTED -> True, price 100
+    # Row 1: COUNTERED & REDEEMED -> True, price 85
+    # Row 2: NOT_ACCEPTED & NULL -> False
+    # Row 3: NOT_ACCEPTED & REDEEMED -> False (not a counter)
+    assert mask.tolist() == [True, True, False, False]
     assert np.allclose(prices[:2], [100.0, 85.0])
 
 
@@ -88,4 +93,13 @@ def test_replay_custom_prices():
         prices=custom_prices,
     )
     assert np.isclose(out["revenue"], 3 * 105.0 + 2 * 55.0)
+
+
+def test_replay_salvage_factor_scales_terminal_value():
+    obs = _obs()
+    out_100 = replay(np.log([95.0]), obs, np.array([5.0]), np.array([100.0]), np.array([0.01]), 10, salvage_factor=1.0)
+    out_80 = replay(np.log([95.0]), obs, np.array([5.0]), np.array([100.0]), np.array([0.01]), 10, salvage_factor=0.8)
+    assert np.isclose(out_80["terminal_value"], 0.8 * out_100["terminal_value"])
+    assert np.isclose(out_80["total_value"], out_80["revenue"] + out_80["terminal_value"])
+
 

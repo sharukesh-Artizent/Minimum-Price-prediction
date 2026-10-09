@@ -22,18 +22,20 @@ def main(argv=None):
     p1, p2 = Phase1Config(), Phase2Config()
     ctx = prepare(args.data_dir, args.train_end, args.train_days, args.test_days, p1)
     _, _, phase1 = run_phase1(ctx, p1)
-    table, replays, reserves = run_phase2(ctx, phase1, p1, p2, args.multipliers,
-                                          fair_replay=args.fair_replay)
+    table, replays, reserves, fair_replays = run_phase2(
+        ctx, phase1, p1, p2, args.multipliers, return_both=True)
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     table.to_csv(args.out_dir / "phase2_frontier.csv", index=False)
     replays.to_csv(args.out_dir / "phase2_replay.csv", index=False)
-    if args.fair_replay:
-        replays.to_csv(args.out_dir / "phase2_replay_fair.csv", index=False)
+    fair_replays.to_csv(args.out_dir / "phase2_replay_fair.csv", index=False)
     reserves.to_csv(args.out_dir / "phase2_reserves.csv", index=False)
+    print("--- Frontier ---")
     print(table.to_string(index=False))
-    print()
+    print("\n--- Baseline Replay (Unscaled) ---")
     print(replays.to_string(index=False))
+    print("\n--- Fair Replay (Counters Credited & Scaled Stock) ---")
+    print(fair_replays.to_string(index=False))
     print(f"\nseconds: {time.perf_counter() - started:.1f}")
     return table, replays, reserves
 

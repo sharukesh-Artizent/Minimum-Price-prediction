@@ -51,35 +51,35 @@ Note that the flatness of the frontier (expected value drops only 0.08% for a 14
 
 ## 4. Replay Backtest
 
-Replaying the 14-day hold-out period (2026-03-26 to 2026-04-09) against actual incoming offers:
+### Baseline Replay (Unscaled Historical Sales Proxy)
+
+Replaying the 14-day hold-out period (2026-03-26 to 2026-04-09) against actual incoming offers using total historical sales (329,598 units) as an unscaled inventory proxy:
 
 | Policy | Revenue (\$) | Units Sold | Accepted Offers | Terminal Value (\$) | Total Value (\$) |
 |---|---|---|---|---|---|
-| **Assurant actual** | 31,877,311 | 122,345 | 15,911 | 56,370,791 | 88,248,102 |
-| **Phase 1 floor** | 30,826,033 | 118,388 | 14,570 | 58,032,170 | 88,858,203 |
-| **Phase 2 $\times$0.0** | 55,686,038 | 200,940 | 15,594 | 35,595,083 | 91,281,121 |
-| **Phase 2 $\times$1.0** | 55,699,679 | 200,977 | 15,612 | 35,580,782 | 91,280,461 |
-| **Phase 2 $\times$1.1** | 55,870,238 | 201,829 | 15,849 | 35,398,621 | 91,268,859 |
-| **Phase 2 $\times$1.2** | 58,919,538 | 215,728 | 16,849 | 32,202,686 | 91,122,224 |
-| **Phase 2 $\times$1.3** | 62,009,225 | 229,922 | 17,735 | 28,826,071 | 90,835,296 |
+| **Assurant actual** | 31,877,311 | 122,345 | 15,911 | 56,362,746 | 88,240,057 |
+| **Phase 1 floor** | 30,828,698 | 118,386 | 14,574 | 58,020,144 | 88,848,842 |
+| **Phase 2 $\times$0.0** | 55,677,057 | 200,985 | 15,582 | 35,591,927 | 91,268,984 |
+| **Phase 2 $\times$1.0** | 55,692,690 | 201,028 | 15,602 | 35,575,453 | 91,268,143 |
+| **Phase 2 $\times$1.1** | 55,855,469 | 201,851 | 15,831 | 35,401,194 | 91,256,663 |
+| **Phase 2 $\times$1.2** | 58,871,566 | 215,649 | 16,840 | 32,244,343 | 91,115,909 |
+| **Phase 2 $\times$1.3** | 61,934,848 | 229,711 | 17,717 | 28,895,665 | 90,830,513 |
 
 - **Inventory-weighted reserve price change:** Across the 19,098 active SKU × warehouse nodes with positive inventory proxy, the inventory-weighted price change of the Phase 2 reserve relative to the Phase 1 floor is **-3.15%**.
 
-### Important Replay Interpretation
-The apparent headline revenue gain ($55.7M vs $31.9M) and total recovery lift should not be interpreted as an authoritative dollar benefit yet. They reflect three structural properties of the replay setup:
-1. **Stock stand-in is overstated:** Inventory is proxied by total historical sales (329K units), which includes non-offer channels. Assurant's historical offer-accepted volume in this window was only 122K units. The replay therefore allows Phase 2 to clear stock that the offer channel did not actually hold.
-2. **Counters are ignored:** Assurant's baseline is credited only for bids marked `ACCEPTED`. In reality, Assurant countered 205K offers, and ~89% of those were redeemed at an average of ~3.7% above the buyer's bid. The baseline thus excludes revenue Assurant actually captured.
-3. **Leftover stock valuation:** Unsold units are marked at depreciated expected bid value, so terminal valuation assumptions heavily drive the final number.
+#### Why the Baseline Numbers are Artificially Inflated
+The apparent headline revenue gain ($55.7M vs $31.9M) reflects three structural artifacts of the baseline setup:
+1. **Stock stand-in is overstated:** Inventory was proxied by total historical sales (329K units), which includes non-offer channels (enterprise contracts, direct retail). Assurant's accepted offer volume in this window was only 122K units. The unscaled replay allowed Phase 2 to "sell" inventory the offer channel never possessed.
+2. **Counters are ignored:** The baseline credited Assurant only for bids marked `ACCEPTED`. In reality, Assurant countered heavily, and ~89% of those counter-offers were redeemed at an average +4.1% markup over the buyer's bid. The baseline thus discarded substantial revenue Assurant actually earned.
+3. **Leftover stock valuation:** Unsold units were marked at depreciated expected bid value, meaning artificial inventory volume drove terminal value.
 
-Phase 2 demonstrates that the algorithmic pipeline functions end to end and shifts reserve prices in the economically intended direction (cutting reserves by 3.15% on deep-inventory nodes while holding or raising them on thin-stock nodes). Reliable dollar quantification requires the refinements described below.
+---
 
 ### Fair Replay Comparison (Counters Credited & Stock Scaled)
 
-To correct the two primary distortions of the baseline replay (ignored counters and unscaled sales inventory), a fair backtest was implemented:
-1. **Crediting redeemed counters:** Assurant's decisions credit offers where `status == "COUNTERED"` and `order_status == "REDEEMED"` transacted at the buyer's agreed counter price (`COUNTER_PRICE`), averaging +4.1% above buyer bids.
-2. **Scaling inventory to offer share:** Available stock per node is scaled to the offer channel's actual share of company sales (122,345 ÷ 329,598 $\approx$ 37.12%).
-
-Replaying the hold-out period under the fair backtest:
+To investigate performance under tighter constraints, a fair backtest was constructed:
+1. **Crediting redeemed counters:** Assurant's decisions credit offers where `status == "COUNTERED"` and `order_status == "REDEEMED"` at the transacted counter price (`COUNTER_PRICE`).
+2. **Stock scaling factor (37.12%):** Available stock per node was scaled by 37.12% (the ratio of the unscaled baseline replay's accepted units to total sales proxy, 122,345 ÷ 329,598). **Important:** This is a heuristic scaling factor derived from the baseline replay itself to bring total stock to the scale of observed offer activity; it is *not* an empirical measurement of the offer channel's true share of company sales. The reported \$31.01M for "Assurant actual" is performance under this shrunken stock constraint, not Assurant's true offer revenue.
 
 | Policy | Revenue (\$) | Units Sold | Accepted Offers | Terminal Value (\$) | Total Value (\$) |
 |---|---|---|---|---|---|
@@ -91,11 +91,27 @@ Replaying the hold-out period under the fair backtest:
 | **Phase 2 $\times$1.2** | 24,133,853 | 88,033 | 12,745 | 9,822,256 | 33,956,110 |
 | **Phase 2 $\times$1.3** | 25,181,339 | 92,661 | 13,326 | 8,657,207 | 33,838,545 |
 
-**Key Fair Replay Insights:**
-- **Realistic baseline:** Crediting redeemed counters and scaling stock eliminates the artificial \$55.7M revenue leap. Assurant actually captured \$31.01M in offer revenue across 107K units.
-- **Phase 2 value recovery:** Phase 2 ($\times$0.0) yields \$34.02M total value (+\$332K / +1.0% over Assurant actual), striking a balance between cash realized and preserved inventory value.
-- **Monotonic clearance:** Increasing the clearance multiplier to $\times$1.3 clears +11.7% more volume (from 82,971 to 92,661 units), lifting revenue from \$23.05M to \$25.18M.
+---
 
+### Leftover Stock Valuation Sensitivity: The "Lift" Disappears
+
+The apparent total recovery of Phase 2 (\$34.02M vs Assurant's \$33.69M) is fragile and entirely dependent on the assumption that unsold inventory retains 100% of its depreciated expected bid value two weeks later.
+
+Testing total value recovery across salvage valuation discounts:
+
+| Leftover Stock Valued At | Assurant Actual | Phase 1 Floor | Phase 2 $\times$0.0 |
+|---|---|---|---|
+| **100% of mean bid (current)** | \$33.69M | \$33.11M | **\$34.02M** |
+| **90% of mean bid** | **\$33.42M** | \$31.18M | \$32.93M |
+| **80% of mean bid** | **\$33.15M** | \$29.25M | \$31.83M |
+
+#### Unit Economics and Honest Assessment:
+1. **Realization and volume:** Assurant actually sells **107,088 units** at an average realization of **\$289.54 per unit** (\$31.01M revenue). In contrast, Phase 2 ($\times$0.0) sells only **82,971 units** at an average of **\$277.86 per unit** (\$23.05M revenue).
+2. **Leftover inventory overhang:** Phase 2 leaves behind **24,117 more unsold units** than Assurant.
+3. **Valuation artifact:** Phase 2 only "wins" at 100% salvage because every unsold unit is marked at the full average bid. As soon as a realistic 10% salvage/liquidation discount is applied to unsold stock, Assurant clearly beats Phase 2 (\$33.42M vs \$32.93M). At an 80% valuation, Assurant outperforms Phase 2 by \$1.32M.
+4. **Conclusion:** **Phase 2 does not beat Assurant on this hold-out test.** The POC proves the algorithmic mechanics—the ADMM formulation solves at scale, shifts reserves directionally by inventory depth, and provides a controllable clearance knob—but it does *not* demonstrate an economic dollar lift over Assurant's actual decision process.
+
+---
 
 ## 5. Caveats
 
@@ -115,9 +131,12 @@ Replaying the hold-out period under the fair backtest:
 ## 6. Asks for Assurant
 
 Open items to raise with Assurant to transition from POC to production MVP:
-- **Grade ranking:** confirm the official rank scale and where grades R, L, S and FTP sit.
-- **Attribute step factors:** provide confirmed factors for storage, generation and brand (currently using placeholder steps of 10% for capacity and 8% for grade).
-- **Economic parameters:** provide official holding cost per unit-day, salvage floors, warehouse clearance targets, and daily reserve price change guardrails.
-- **Cost basis:** clarify whether "ROI" in the project charter implies return on purchase cost. Without cost basis data, the objective optimizes net revenue recovery.
-- **Overlapping inventory extract:** provide a complete inventory extract covering the full offer history date range.
-- **Redeemed counters:** clarify the operational definition of `ORDER_STATUS = REDEEMED` and buyer counter negotiation dynamics.
+- **Aligned stock per node for a defensible comparison:** For a defensible benchmark, every policy must be tested against the exact same stock: the units Assurant actually sold through the offer channel per SKU $\times$ warehouse.
+- **Confirmed salvage discount rate & holding cost:** Official liquidation discount percentage applied to unsold stock at horizon end, plus confirmed daily holding cost per unit. Relative policy rankings are decisively sensitive to leftover stock valuation.
+- **Counter negotiation dynamics:** Clarify buyer drop-off curves on counter offers to model active counter-pricing rather than treating the offer channel as a pure accept/reject hurdle.
+- **Grade ranking:** Confirm the official rank scale and where grades R, L, S and FTP sit.
+- **Attribute step factors:** Provide confirmed factors for storage, generation and brand (currently using placeholder steps of 10% for capacity and 8% for grade).
+- **Economic parameters:** Confirm warehouse clearance targets and daily reserve price change guardrails.
+- **Cost basis:** Clarify whether "ROI" in the project charter implies return on purchase cost. Without cost basis data, the objective optimizes net revenue recovery.
+- **Overlapping inventory extract:** Provide a complete inventory extract covering the full offer history date range.
+

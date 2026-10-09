@@ -75,9 +75,11 @@ def run_phase1(ctx: Context, cfg: Phase1Config) -> tuple[dict, pd.DataFrame, Pha
 
 def compute_replays(ctx: Context, phase1: Phase1Output, results: dict,
                     inventory: np.ndarray, value: np.ndarray, delta: np.ndarray,
-                    horizon: int, fair: bool = False) -> pd.DataFrame:
+                    horizon: int, fair: bool = False,
+                    salvage_factor: float = 1.0) -> pd.DataFrame:
     def _do(name, reserve_log, inv, mask=None, p_arr=None):
-        out = replay(reserve_log, ctx.test_obs, inv, value, delta, horizon, mask, p_arr)
+        out = replay(reserve_log, ctx.test_obs, inv, value, delta, horizon, mask, p_arr,
+                     salvage_factor=salvage_factor)
         return {"policy": name, **out}
 
     if fair:
@@ -102,7 +104,8 @@ def compute_replays(ctx: Context, phase1: Phase1Output, results: dict,
 
 def run_phase2(ctx: Context, phase1: Phase1Output, p1: Phase1Config, p2: Phase2Config,
                multipliers: list[float],
-               fair_replay: bool = False) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+               fair_replay: bool = False,
+               return_both: bool = False) -> tuple:
     """Returns (frontier table, replay table, per-node reserves at multiplier 0)."""
     if not multipliers:
         raise ValueError("multipliers list must not be empty")
@@ -128,4 +131,8 @@ def run_phase2(ctx: Context, phase1: Phase1Output, p1: Phase1Config, p2: Phase2C
     reserves["continuation_value"] = econ.continuation
     reserves["expected_units"] = first.sold
     reserves["warehouse_dual"] = first.dual[warehouse]
+    if return_both:
+        fair_replays = compute_replays(ctx, phase1, results, inventory, demand.value, delta,
+                                       horizon, fair=True)
+        return table, replays, reserves, fair_replays
     return table, replays, reserves

@@ -9,7 +9,10 @@ def build_fair_actual(obs: Observations) -> tuple[np.ndarray, np.ndarray]:
     mask = obs.accepted == 1.0
     prices = np.exp(obs.log_bid).copy()
     if obs.order_status is not None and obs.counter_price is not None:
-        redeemed_counter = (obs.accepted == 0.0) & (obs.order_status == "REDEEMED") & (obs.counter_price > 0)
+        if obs.status is not None:
+            redeemed_counter = (obs.status == "COUNTERED") & (obs.order_status == "REDEEMED") & (obs.counter_price > 0)
+        else:
+            redeemed_counter = (obs.accepted == 0.0) & (obs.order_status == "REDEEMED") & (obs.counter_price > 0)
         mask = mask | redeemed_counter
         prices = np.where(redeemed_counter, obs.counter_price, prices)
     return mask, prices
@@ -24,12 +27,13 @@ def replay(
     horizon_days: int,
     accept_mask: np.ndarray | None = None,
     prices: np.ndarray | None = None,
+    salvage_factor: float = 1.0,
 ) -> dict:
     """Walk offers by date, node, highest bid first; accept if bid >= reserve and stock left.
 
     accept_mask overrides the reserve rule (used to replay Assurant's actual decisions).
     prices optionally overrides the transacted unit price (used for counter prices).
-    Unsold stock is marked at value * (1 - delta) ** horizon_days.
+    Unsold stock is marked at value * salvage_factor * (1 - delta) ** horizon_days.
     """
     order = np.lexsort((-obs.log_bid, obs.node, obs.date))
     remaining = inventory.astype(float).copy()
@@ -45,7 +49,7 @@ def replay(
             price = prices[k] if prices is not None else float(np.exp(obs.log_bid[k]))
             revenue += take * float(price)
             accepted += 1
-    terminal = float(np.sum(remaining * value * (1.0 - delta) ** horizon_days))
+    terminal = float(np.sum(remaining * value * salvage_factor * (1.0 - delta) ** horizon_days))
     return {
         "revenue": revenue,
         "units": units,

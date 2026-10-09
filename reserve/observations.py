@@ -15,6 +15,7 @@ class Observations:
     date: np.ndarray       # datetime64[ns]
     counter_price: np.ndarray | None = None
     order_status: np.ndarray | None = None
+    status: np.ndarray | None = None
 
     def __len__(self) -> int:
         return len(self.node)
@@ -38,6 +39,7 @@ def observations(offers: pd.DataFrame, nodes: pd.DataFrame, as_of, tau_days: flo
     age = (pd.Timestamp(as_of) - o["date"]).dt.days.to_numpy(dtype=float)
     cp = o["counter_price"].to_numpy(dtype=float) if "counter_price" in o.columns else None
     os = o["order_status"].to_numpy() if "order_status" in o.columns else None
+    st = o["status"].to_numpy() if "status" in o.columns else None
     return Observations(
         node=node[keep].astype(np.int64),
         log_bid=o["log_bid"].to_numpy(dtype=float),
@@ -47,6 +49,7 @@ def observations(offers: pd.DataFrame, nodes: pd.DataFrame, as_of, tau_days: flo
         date=o["date"].to_numpy(),
         counter_price=cp,
         order_status=os,
+        status=st,
     )
 
 
