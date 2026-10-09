@@ -180,6 +180,7 @@ def train_heads(x_tr, t_tr, c, x_val, val_score, cfg: TrainConfig, init_ckpt: st
                 log(f"[train] early stop at epoch {epoch} (best {best_epoch})")
                 break
     model.load_state_dict(best_state)
+    model.eval()
     return TrainResult(model, head_cfg, warm, best_epoch, float(best), history)
 
 

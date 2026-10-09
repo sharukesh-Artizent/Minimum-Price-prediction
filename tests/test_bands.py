@@ -17,6 +17,8 @@ def test_band_of_edges():
 def test_soft_targets_point_mass():
     t = soft_targets([0.96], [0.96])
     assert t.shape == (1, 14) and t[0, band_of([0.96])[0]] == 1.0 and t.sum() == 1.0
+    t_scalar = soft_targets(0.96, 0.96)
+    assert t_scalar.shape == (1, 14) and t_scalar[0, band_of([0.96])[0]] == 1.0 and t_scalar.sum() == 1.0
 
 
 def test_soft_targets_overlap_is_proportional():

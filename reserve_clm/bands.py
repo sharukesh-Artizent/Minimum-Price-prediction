@@ -21,8 +21,8 @@ def soft_targets(lo, hi) -> np.ndarray:
 
     A zero-width interval puts all mass on the band containing it.
     """
-    lo = np.clip(np.asarray(lo, dtype=float), EDGES[0], EDGES[-1])
-    hi = np.clip(np.asarray(hi, dtype=float), EDGES[0], EDGES[-1])
+    lo = np.clip(np.atleast_1d(np.asarray(lo, dtype=float)), EDGES[0], EDGES[-1])
+    hi = np.clip(np.atleast_1d(np.asarray(hi, dtype=float)), EDGES[0], EDGES[-1])
     a, b = EDGES[:-1][None, :], EDGES[1:][None, :]
     overlap = np.clip(np.minimum(hi[:, None], b) - np.maximum(lo[:, None], a), 0.0, None)
     width = overlap.sum(1)

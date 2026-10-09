@@ -41,6 +41,7 @@ def test_train_heads_learns_separable_bands():
     p = predict_proba(res.model, x_va, centers)
     assert p.shape == (280, 14) and np.allclose(p.sum(1), 1, atol=1e-5)
     assert (p.argmax(1) == y_va).mean() > 0.9 and res.best_score > 0.9 and not res.warm_start
+    assert res.model.training is False
 
 
 def test_checkpoint_round_trip_warm_starts(tmp_path):

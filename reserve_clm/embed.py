@@ -43,10 +43,10 @@ class QwenEmbedder:
         if not os.path.exists(path) and not path.endswith(".npz") and os.path.exists(path + ".npz"):
             path = path + ".npz"
         if os.path.exists(path):
-            z = np.load(path)
-            self.cache = dict(zip(z["keys"].tolist(), z["vecs"]))
-            if hasattr(z, "files") and "vecs" in z.files and len(z["vecs"]) > 0 and not hasattr(self, "hidden"):
-                self.hidden = int(z["vecs"].shape[1])
+            with np.load(path) as z:
+                self.cache = dict(zip(z["keys"].tolist(), z["vecs"]))
+                if hasattr(z, "files") and "vecs" in z.files and len(z["vecs"]) > 0 and not hasattr(self, "hidden"):
+                    self.hidden = int(z["vecs"].shape[1])
 
     def _save_cache(self) -> None:
         if not self.cache_path or not self.cache:
@@ -99,5 +99,7 @@ class QwenEmbedder:
     def close(self) -> None:
         """Release the 8B model (GPU memory) once all texts are embedded."""
         self.model = None
+        import gc
+        gc.collect()
         if hasattr(self, "torch") and self.torch.cuda.is_available():
             self.torch.cuda.empty_cache()

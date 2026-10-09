@@ -93,7 +93,8 @@ def embed_all(prep: Prepared, cfg: RunConfig, embedder=None, log=print):
     V = views(prep)
     band_texts = [band_descriptions()[k] for k in BAND_KEYS]
     texts = list(dict.fromkeys(band_texts + [t for v in V.values() for t in v.text] + list(prep.replay.text)))
-    if embedder is None:
+    created = embedder is None
+    if created:
         slug = cfg.embed_model.replace("/", "_")
         embedder = QwenEmbedder(cfg.embed_model, cfg.max_len, cfg.embed_batch, log=log,
                                 cache_path=os.path.join(cfg.work_dir, f"embed_cache_{slug}_{cfg.max_len}.npz"))
@@ -107,6 +108,8 @@ def embed_all(prep: Prepared, cfg: RunConfig, embedder=None, log=print):
     emb = {k: get(list(v.text)) for k, v in V.items()}
     emb["replay"] = get(list(prep.replay.text))
     emb["bands"] = get(band_texts)
+    if created:
+        embedder.close()
     return V, emb
 
 
@@ -162,4 +165,5 @@ def save_results(results: dict[str, pd.DataFrame], work_dir: str) -> None:
     for name, t in results.items():
         t.to_csv(os.path.join(out, f"{name}.csv"), index=False)
     head = results["headline_test"].set_index("method").interval_hit_rate.to_dict()
-    json.dump({"test_interval_hit_rate": head}, open(os.path.join(out, "summary.json"), "w"), indent=1)
+    with open(os.path.join(out, "summary.json"), "w", encoding="utf-8") as f:
+        json.dump({"test_interval_hit_rate": head}, f, indent=1)

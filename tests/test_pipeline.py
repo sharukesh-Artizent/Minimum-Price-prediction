@@ -1,10 +1,11 @@
+import json
 import numpy as np
 import pandas as pd
 import pytest
 
 from conftest import DATA_DIR
 from reserve_clm.bands import N_BANDS
-from reserve_clm.pipeline import RunConfig, evaluate_all, prepare, run_training, save_results, views
+from reserve_clm.pipeline import RunConfig, embed_all, evaluate_all, prepare, run_training, save_results, views
 from reserve_clm.train import TrainConfig
 
 pytestmark = [pytest.mark.slow,
@@ -51,3 +52,19 @@ def test_training_and_evaluation_with_fake_embeddings(prep, tmp_path):
     assert len(res["training"]) == 2
     save_results(res, str(tmp_path))
     assert (tmp_path / "results" / "summary.json").exists()
+    with open(tmp_path / "results" / "summary.json", encoding="utf-8") as f:
+        summary_data = json.load(f)
+    assert "test_interval_hit_rate" in summary_data
+
+    class MockEmbedder:
+        def __init__(self):
+            self.closed = False
+        def embed(self, texts):
+            return np.zeros((len(texts), 16), dtype=np.float32)
+        def close(self):
+            self.closed = True
+
+    mock_emb = MockEmbedder()
+    v_out, emb_out = embed_all(prep, cfg, embedder=mock_emb, log=lambda *_: None)
+    assert not mock_emb.closed
+    assert "bands" in emb_out

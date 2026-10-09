@@ -49,6 +49,11 @@ def test_load_offers_filters_and_types(files):
     assert str(o.price.dtype).startswith("float")
     assert str(o.qty.dtype).startswith("float")
 
+    import io
+    csv = OFFERS + "7,76,A,W1,0,120,NULL,ACCEPTED,NULL,10/21/2025 11:00,x,7\n"
+    o2 = load_offers(io.StringIO(csv))
+    assert o2.loc[o2.offer_id == "7", "qty"].iloc[0] == 1.0
+
 
 def test_load_sales_nets_cancelled(files):
     s = load_sales(str(files / "x" / "Sales Order&Line items.csv"))

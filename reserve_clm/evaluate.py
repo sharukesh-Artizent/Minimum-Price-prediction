@@ -84,8 +84,8 @@ def band_ece(probs, true_band, n_bins: int = 10) -> float:
     correct = probs.argmax(1) == np.asarray(true_band, dtype=int)
     edges = np.linspace(0, 1, n_bins + 1)
     ece = 0.0
-    for lo, hi in zip(edges[:-1], edges[1:]):
-        m = (conf > lo) & (conf <= hi)
+    for i, (lo, hi) in enumerate(zip(edges[:-1], edges[1:])):
+        m = (conf >= lo if i == 0 else conf > lo) & (conf <= hi)
         if m.any():
             ece += m.mean() * abs(correct[m].mean() - conf[m].mean())
     return float(ece)

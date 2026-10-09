@@ -62,7 +62,7 @@ def load_offers(path: str) -> pd.DataFrame:
     out = out[out.status.isin(OFFER_STATUSES) & (out.price > 0) & out.ts.notna()].copy()
     out["day"] = out.ts.dt.normalize().astype("datetime64[ns]")
     out["accepted"] = out.status.eq("ACCEPTED")
-    out["qty"] = out.qty.fillna(1.0).astype(float)
+    out["qty"] = out.qty.where(out.qty > 0, 1.0).astype(float)
     return out.reset_index(drop=True)
 
 

@@ -43,6 +43,8 @@ def test_calibration_and_ece():
     p = np.zeros((2, 14))
     p[:, 0] = 1.0
     assert band_ece(p, np.array([0, 0])) == 0.0 and band_ece(p, np.array([1, 1])) == 1.0
+    p_zero = np.zeros((1, 14))
+    assert band_ece(p_zero, np.array([0])) == 1.0 and band_ece(p_zero, np.array([1])) == 0.0
 
 
 def test_baselines():
