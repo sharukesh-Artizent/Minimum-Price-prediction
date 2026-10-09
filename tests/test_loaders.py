@@ -15,6 +15,9 @@ def test_load_offers_derives_label_date_and_log_bid(data_dir):
     assert offers.loc["2", "accepted"] == 0.0
     assert offers.loc["1", "date"].strftime("%Y-%m-%d") == "2025-10-20"
     assert np.isclose(offers.loc["1", "log_bid"], np.log(100))
+    assert offers.loc["2", "counter_price"] == 85.0
+    assert offers.loc["2", "order_status"] == "REDEEMED"
+
 
 
 def test_load_products_one_row_per_sku(data_dir):

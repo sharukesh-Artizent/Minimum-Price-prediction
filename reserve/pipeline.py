@@ -14,7 +14,7 @@ from reserve.market import daily_depreciation, proxy_inventory
 from reserve.observations import Observations, node_priors, observations, window
 from reserve.phase1 import Phase1Output, estimate_floor
 from reserve.phase2 import build_economics, frontier
-from reserve.replay import replay
+from reserve.replay import build_fair_actual, replay
 
 
 @dataclass
@@ -73,8 +73,36 @@ def run_phase1(ctx: Context, cfg: Phase1Config) -> tuple[dict, pd.DataFrame, Pha
     return metrics, floors, pooled
 
 
+def compute_replays(ctx: Context, phase1: Phase1Output, results: dict,
+                    inventory: np.ndarray, value: np.ndarray, delta: np.ndarray,
+                    horizon: int, fair: bool = False) -> pd.DataFrame:
+    def _do(name, reserve_log, inv, mask=None, p_arr=None):
+        out = replay(reserve_log, ctx.test_obs, inv, value, delta, horizon, mask, p_arr)
+        return {"policy": name, **out}
+
+    if fair:
+        base_act = _do("baseline_temp", phase1.floor_log, inventory, mask=ctx.test_obs.accepted == 1)
+        tot_inv = float(np.sum(inventory))
+        offer_share = (base_act["units"] / tot_inv) if tot_inv > 0 else 1.0
+        scaled_inv = inventory * offer_share
+        fair_mask, fair_prices = build_fair_actual(ctx.test_obs)
+        rows = [
+            _do("assurant_actual", phase1.floor_log, scaled_inv, mask=fair_mask, p_arr=fair_prices),
+            _do("phase1_floor", phase1.floor_log, scaled_inv),
+        ]
+        rows += [_do(f"phase2_x{m}", res.logr, scaled_inv) for m, res in results.items()]
+    else:
+        rows = [
+            _do("assurant_actual", phase1.floor_log, inventory, mask=ctx.test_obs.accepted == 1),
+            _do("phase1_floor", phase1.floor_log, inventory),
+        ]
+        rows += [_do(f"phase2_x{m}", res.logr, inventory) for m, res in results.items()]
+    return pd.DataFrame(rows)
+
+
 def run_phase2(ctx: Context, phase1: Phase1Output, p1: Phase1Config, p2: Phase2Config,
-               multipliers: list[float]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+               multipliers: list[float],
+               fair_replay: bool = False) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Returns (frontier table, replay table, per-node reserves at multiplier 0)."""
     if not multipliers:
         raise ValueError("multipliers list must not be empty")
@@ -82,21 +110,15 @@ def run_phase2(ctx: Context, phase1: Phase1Output, p1: Phase1Config, p2: Phase2C
     horizon = (ctx.test_end - ctx.train_end).days
     demand = fit_demand(ctx.train_obs, ctx.graph, ctx.prior, p1, p2, train_days)
     delta = daily_depreciation(ctx.sales[ctx.sales["date"] < ctx.train_end], ctx.nodes,
-                               p2.default_delta)
+                                p2.default_delta)
     inventory = proxy_inventory(ctx.sales, ctx.nodes, ctx.train_end, ctx.test_end)
     warehouse = pd.factorize(ctx.nodes["warehouse"])[0]
     econ = build_economics(demand, delta, inventory, phase1.floor_log, phase1.node_weight,
                            warehouse, p2)
     table, results = frontier(econ, ctx.graph, multipliers, p2)
 
-    def _replay(name, reserve_log, mask=None):
-        out = replay(reserve_log, ctx.test_obs, inventory, demand.value, delta, horizon, mask)
-        return {"policy": name, **out}
-
-    rows = [_replay("assurant_actual", phase1.floor_log, ctx.test_obs.accepted == 1),
-            _replay("phase1_floor", phase1.floor_log)]
-    rows += [_replay(f"phase2_x{m}", res.logr) for m, res in results.items()]
-    replays = pd.DataFrame(rows)
+    replays = compute_replays(ctx, phase1, results, inventory, demand.value, delta,
+                              horizon, fair=fair_replay)
 
     first = results[multipliers[0]]
     reserves = ctx.nodes[["sku", "warehouse", "family", "grade", "capacity_gb"]].copy()

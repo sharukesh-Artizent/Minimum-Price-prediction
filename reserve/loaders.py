@@ -21,7 +21,9 @@ def load_offers(data_dir: Path) -> pd.DataFrame:
         "warehouse": df["WAREHOUSE"].str.strip(),
         "qty": pd.to_numeric(df["OFFER_QUANTITY"], errors="coerce"),
         "bid": pd.to_numeric(df["OFFER_PRICE"], errors="coerce"),
+        "counter_price": pd.to_numeric(df["COUNTER_PRICE"], errors="coerce"),
         "status": df["OFFER_STATUS"],
+        "order_status": df["ORDER_STATUS"].fillna("").str.strip(),
         "created": pd.to_datetime(df["OFFER_CREATE_DATETIME"], format=DATE_FMT, errors="coerce"),
     })
     keep = (

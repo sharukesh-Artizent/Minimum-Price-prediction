@@ -73,6 +73,30 @@ The apparent headline revenue gain ($55.7M vs $31.9M) and total recovery lift sh
 
 Phase 2 demonstrates that the algorithmic pipeline functions end to end and shifts reserve prices in the economically intended direction (cutting reserves by 3.15% on deep-inventory nodes while holding or raising them on thin-stock nodes). Reliable dollar quantification requires the refinements described below.
 
+### Fair Replay Comparison (Counters Credited & Stock Scaled)
+
+To correct the two primary distortions of the baseline replay (ignored counters and unscaled sales inventory), a fair backtest was implemented:
+1. **Crediting redeemed counters:** Assurant's decisions credit offers where `status == "COUNTERED"` and `order_status == "REDEEMED"` transacted at the buyer's agreed counter price (`COUNTER_PRICE`), averaging +4.1% above buyer bids.
+2. **Scaling inventory to offer share:** Available stock per node is scaled to the offer channel's actual share of company sales (122,345 ÷ 329,598 $\approx$ 37.12%).
+
+Replaying the hold-out period under the fair backtest:
+
+| Policy | Revenue (\$) | Units Sold | Accepted Offers | Terminal Value (\$) | Total Value (\$) |
+|---|---|---|---|---|---|
+| **Assurant actual (fair)** | 31,006,547 | 107,088 | 18,088 | 2,684,991 | 33,691,538 |
+| **Phase 1 floor** | 13,799,951 | 52,165 | 11,878 | 19,314,096 | 33,114,047 |
+| **Phase 2 $\times$0.0** | 23,054,274 | 82,971 | 11,917 | 10,969,457 | 34,023,730 |
+| **Phase 2 $\times$1.0** | 23,057,103 | 82,980 | 11,928 | 10,965,823 | 34,022,926 |
+| **Phase 2 $\times$1.1** | 23,118,783 | 83,288 | 12,088 | 10,899,315 | 34,018,098 |
+| **Phase 2 $\times$1.2** | 24,133,853 | 88,033 | 12,745 | 9,822,256 | 33,956,110 |
+| **Phase 2 $\times$1.3** | 25,181,339 | 92,661 | 13,326 | 8,657,207 | 33,838,545 |
+
+**Key Fair Replay Insights:**
+- **Realistic baseline:** Crediting redeemed counters and scaling stock eliminates the artificial \$55.7M revenue leap. Assurant actually captured \$31.01M in offer revenue across 107K units.
+- **Phase 2 value recovery:** Phase 2 ($\times$0.0) yields \$34.02M total value (+\$332K / +1.0% over Assurant actual), striking a balance between cash realized and preserved inventory value.
+- **Monotonic clearance:** Increasing the clearance multiplier to $\times$1.3 clears +11.7% more volume (from 82,971 to 92,661 units), lifting revenue from \$23.05M to \$25.18M.
+
+
 ## 5. Caveats
 
 ### Known Data Limitations

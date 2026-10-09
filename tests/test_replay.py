@@ -55,3 +55,37 @@ def test_replay_accept_mask_replays_actual_decisions():
         accept_mask=obs.accepted == 1,
     )
     assert np.isclose(out["revenue"], 3 * 100.0 + 2 * 50.0)
+
+
+def test_build_fair_actual_credits_redeemed_counters():
+    from reserve.replay import build_fair_actual
+    obs = Observations(
+        node=np.zeros(3, dtype=np.int64),
+        log_bid=np.log([100.0, 80.0, 60.0]),
+        accepted=np.array([1.0, 0.0, 0.0]),
+        weight=np.ones(3),
+        qty=np.array([1.0, 1.0, 1.0]),
+        date=np.array(["2026-01-01"] * 3, dtype="datetime64[ns]"),
+        counter_price=np.array([np.nan, 85.0, 65.0]),
+        order_status=np.array(["REDEEMED", "REDEEMED", "NULL"]),
+    )
+    mask, prices = build_fair_actual(obs)
+    assert mask.tolist() == [True, True, False]
+    assert np.allclose(prices[:2], [100.0, 85.0])
+
+
+def test_replay_custom_prices():
+    obs = _obs()
+    custom_prices = np.array([92.0, 55.0, 105.0])
+    out = replay(
+        np.zeros(1),
+        obs,
+        np.array([10.0]),
+        np.array([100.0]),
+        np.array([0.0]),
+        14,
+        accept_mask=obs.accepted == 1,
+        prices=custom_prices,
+    )
+    assert np.isclose(out["revenue"], 3 * 105.0 + 2 * 55.0)
+
