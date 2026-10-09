@@ -72,7 +72,7 @@ def _curve_png(w, path: Path):
     c = w.fitted.curve
     fig, ax = plt.subplots(figsize=(6, 4))
     for k, v in c.curves.items():
-        ax.plot(c.grid, v, lw=2 if k == "__all__" else 0.8, label=k if k == "__all__" else None)
+        ax.plot(c.grid, v, lw=2 if k == "__all__" else 0.8, label="Overall" if k == "__all__" else None)
     ax.set_xlabel("counter gap (c - b) / b")
     ax.set_ylabel("P(counter taken), recall-corrected")
     ax.legend()
