@@ -37,13 +37,15 @@ Sweeping the warehouse clearance target multiplier $\alpha$ from 0.0 (pure uncon
 
 | Multiplier ($\alpha$) | Expected Units | Expected Revenue (\$) | Expected Value (\$) | Mean Price Change (%) | Binding Warehouses | Iterations | Converged | Ordering Violations |
 |---|---|---|---|---|---|---|---|---|
-| **0.0** | 50,864 | 15,182,568 | 81,986,782 | +24.5% | 0 / 14 | 200 | False | 303 |
-| **1.0** | 50,952 | 15,208,543 | 81,986,194 | +23.5% | 6 / 14 | 200 | False | 302 |
-| **1.1** | 51,348 | 15,313,498 | 81,981,116 | +16.8% | 11 / 14 | 200 | False | 301 |
-| **1.2** | 54,657 | 15,977,130 | 81,967,593 | -10.3% | 13 / 14 | 200 | False | 306 |
-| **1.3** | 58,286 | 16,787,053 | 81,924,080 | -41.1% | 14 / 14 | 200 | False | 340 |
+| **0.0** | 50,864 | 15,182,568 | 81,986,782 | +0.25% | 0 / 14 | 200 | False | 303 |
+| **1.0** | 50,952 | 15,208,543 | 81,986,194 | +0.23% | 6 / 14 | 200 | False | 302 |
+| **1.1** | 51,348 | 15,313,498 | 81,981,116 | +0.17% | 11 / 14 | 200 | False | 301 |
+| **1.2** | 54,657 | 15,977,130 | 81,967,593 | -0.10% | 13 / 14 | 200 | False | 306 |
+| **1.3** | 58,286 | 16,787,053 | 81,924,080 | -0.41% | 14 / 14 | 200 | False | 340 |
 
-Increasing the clearance multiplier from $\alpha = 0.0$ to $\alpha = 1.3$ forces aggressive price reductions (mean price change drops from +24.5% to -41.1%) that clear 14.6% more units (50,864 to 58,286) and increase current-period sales revenue by \$1.60M, in exchange for only a \$62.7K (0.08%) reduction in total expected value (revenue plus depreciated terminal inventory).
+Increasing the clearance multiplier from $\alpha = 0.0$ to $\alpha = 1.3$ shifts catalog-wide unweighted reserve prices from +0.25% to -0.41% across all 55,070 nodes, clearing 14.6% more units (50,864 to 58,286) and increasing current-period sales revenue by \$1.60M in exchange for only a \$62.7K (0.08%) reduction in total expected value (revenue plus depreciated terminal inventory).
+
+Unweighted prices across the entire catalog barely move (+0.25% to -0.41%) because the vast majority of catalog nodes have zero or minimal stock and remain anchored to their Phase 1 baseline floor. However, reserves drop strategically on heavily stocked nodes to drive clearance: across active nodes with positive inventory, the inventory-weighted price change is -3.15% (as documented in Section 4). This confirms the model concentrates price concessions specifically where inventory pressure exists rather than discounting the thin catalog tail indiscriminately.
 
 ## 4. Replay Backtest
 

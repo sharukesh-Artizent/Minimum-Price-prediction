@@ -76,6 +76,8 @@ def run_phase1(ctx: Context, cfg: Phase1Config) -> tuple[dict, pd.DataFrame, Pha
 def run_phase2(ctx: Context, phase1: Phase1Output, p1: Phase1Config, p2: Phase2Config,
                multipliers: list[float]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Returns (frontier table, replay table, per-node reserves at multiplier 0)."""
+    if not multipliers:
+        raise ValueError("multipliers list must not be empty")
     train_days = (ctx.train_end - ctx.train_start).days
     horizon = (ctx.test_end - ctx.train_end).days
     demand = fit_demand(ctx.train_obs, ctx.graph, ctx.prior, p1, p2, train_days)
