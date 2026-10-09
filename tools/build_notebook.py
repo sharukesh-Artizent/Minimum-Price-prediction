@@ -166,6 +166,8 @@ def build() -> pathlib.Path:
         cells.append(cell)
     cells += [new_code_cell(CONFIG), new_code_cell(PREP), new_code_cell(SHOW), new_code_cell(EMBED),
               new_code_cell(TRAIN), new_code_cell(EVAL), new_code_cell(EVAL2), new_markdown_cell(READ)]
+    for idx, cell in enumerate(cells):
+        cell.id = f"cell_{idx:03d}"
     nb = new_notebook(cells=cells, metadata={"kernelspec": {"name": "python3", "display_name": "Python 3",
                                                             "language": "python"},
                                              "accelerator": "GPU"})
