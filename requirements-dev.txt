@@ -1,0 +1,11 @@
+pandas
+numpy
+pyarrow
+pytest
+transformers>=4.51
+accelerate
+huggingface_hub
+nbformat
+nbclient
+ipykernel
+requests
