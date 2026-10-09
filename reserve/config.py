@@ -24,7 +24,7 @@ class Phase1Config:
     temperature: float = 0.03        # logistic softness in log-price units (~3%)
     prior_weight: float = 0.01       # pull toward family median when data and edges are silent
     recency_tau_days: float = 14.0   # offer weight = exp(-age_days / tau)
-    max_iter: int = 300
+    max_iter: int = 600
     eps: float = 1e-4
     bisect_iters: int = 40
     capacity_step_log: float = math.log(1.10)  # placeholder until Assurant sets storage factors
