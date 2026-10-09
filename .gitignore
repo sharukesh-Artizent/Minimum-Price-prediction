@@ -10,3 +10,4 @@ ENV/
 *.egg-info/
 dist/
 build/
+work/
