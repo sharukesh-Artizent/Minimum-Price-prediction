@@ -16,7 +16,7 @@ def test_build_notebook_inlines_current_modules():
     code = [c.source for c in nb.cells if c.cell_type == "code"]
     for m in MODULES:
         cell = next(s for s in code if s.startswith(f"%%writefile reserve_clm/{m}.py\n"))
-        assert cell.split("\n", 1)[1] == (ROOT / "reserve_clm" / f"{m}.py").read_text()
+        assert cell.split("\n", 1)[1] == (ROOT / "reserve_clm" / f"{m}.py").read_text(encoding="utf-8")
     for s in code:                                     # every non-magic cell must parse
         if not s.startswith("%%"):
             ast.parse(s)

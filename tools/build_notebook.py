@@ -157,9 +157,9 @@ READ = """## How to read the results
 
 def build() -> pathlib.Path:
     cells = [new_markdown_cell(INTRO), new_code_cell(SETUP), new_code_cell(DATA),
-             new_markdown_cell("## 3. Project code\\nThe tested modules, written to `reserve_clm/` (collapsed).")]
+             new_markdown_cell("## 3. Project code\nThe tested modules, written to `reserve_clm/` (collapsed).")]
     for m in MODULES:
-        src = (ROOT / "reserve_clm" / f"{m}.py").read_text()
+        src = (ROOT / "reserve_clm" / f"{m}.py").read_text(encoding="utf-8")
         cell = new_code_cell(f"%%writefile reserve_clm/{m}.py\n{src}")
         cell.metadata["jupyter"] = {"source_hidden": True}
         cell.metadata["cellView"] = "form"
