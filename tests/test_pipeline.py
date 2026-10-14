@@ -40,15 +40,21 @@ def test_training_and_evaluation_with_fake_embeddings(prep, tmp_path):
     E = {k: rng.standard_normal((len(v), 16)).astype(np.float32) for k, v in V.items()}
     E["replay"] = rng.standard_normal((len(prep.replay), 16)).astype(np.float32)
     E["bands"] = rng.standard_normal((N_BANDS, 16)).astype(np.float32)
-    cfg = RunConfig(data_roots=[], work_dir=str(tmp_path), seeds=(1, 2),
+    cfg = RunConfig(data_roots=[], work_dir=str(tmp_path), seeds=(1, 2), device="cpu",
                     train=TrainConfig(epochs=2, batch=64, width=32, depth=3, proj=8))
     runs = run_training(V, E, cfg, log=lambda *_: None)
+    assert all(str(next(r["result"].model.parameters()).device) == "cpu" for r in runs)
     res = evaluate_all(prep, V, runs)
     h = res["headline_test"]
     assert {"B0 carry-forward", "B1 fixed ratio", "B2 majority band", "CLM seeds (mean)",
             "CLM ensemble (median band)", "CLM ensemble (expected ratio)"} <= set(h.method)
     assert h.interval_hit_rate.between(0, 1).all()
     assert {"reference", "method", "agreement"} <= set(res["replay"].columns)
+    assert {"band_within_3", "band_within_5"} <= set(h.columns)
+    for k in ("acceptance_test", "acceptance_fallback"):
+        a = res[k]
+        assert {"method", "n_days", "day_exact_match", "accept_precision", "accept_recall"} <= set(a.columns)
+        assert "CLM ensemble (median band)" in set(a.method)
     assert len(res["training"]) == 2
     save_results(res, str(tmp_path))
     assert (tmp_path / "results" / "summary.json").exists()

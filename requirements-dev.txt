@@ -9,3 +9,4 @@ nbformat
 nbclient
 ipykernel
 requests
+openpyxl

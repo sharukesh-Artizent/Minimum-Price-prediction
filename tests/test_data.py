@@ -1,3 +1,4 @@
+import io
 import pandas as pd
 import pytest
 
@@ -69,3 +70,43 @@ def test_load_products_family(files):
     assert len(p) == 2                                      # duplicate (A, W1) dropped
     assert p.family.tolist() == ["Apple|iPhone 13|128GB|B"] * 2
     assert p.color.tolist() == ["Blue", "unknown"]
+
+
+def test_find_data_files_tolerates_renamed_uploads(tmp_path):
+    (tmp_path / "Offers.csv").write_text(OFFERS)
+    (tmp_path / "Product_Information.csv").write_text(PRODUCTS)
+    (tmp_path / "Sales Order Line items.csv").write_text(SALES)
+    (tmp_path / "Sales Order& Line Items - real time.csv").write_text(SALES)   # must not match
+    found = find_data_files([str(tmp_path)])
+    assert found["sales"].endswith("Sales Order Line items.csv")
+    assert found["products"].endswith("Product_Information.csv")
+
+
+def test_xlsx_inputs_with_excel_types(tmp_path):
+    """Excel stores numbers and dates as real types; ids and timestamps must still match the CSV path."""
+    o = pd.read_csv(io.StringIO(OFFERS), dtype=str)
+    o["SKU"] = 12345.0                                                  # numeric SKU as Excel float
+    o["OFFER_CREATE_DATETIME"] = pd.to_datetime(o.OFFER_CREATE_DATETIME, format="%m/%d/%Y %H:%M")
+    o["OFFER_PRICE"] = pd.to_numeric(o.OFFER_PRICE)
+    o.to_excel(tmp_path / "Offers.xlsx", index=False)
+    s = pd.read_csv(io.StringIO(SALES), dtype=str)
+    s["DATE"] = pd.to_datetime(s.DATE, format="%m/%d/%Y %H:%M")
+    s.to_excel(tmp_path / "Sales Order&Line items.xlsx", index=False)
+    pd.read_csv(io.StringIO(PRODUCTS), dtype=str).to_excel(tmp_path / "Product Information.xlsx", index=False)
+    (tmp_path / "~$Offers.xlsx").write_text("lock file")                # Excel lock file must be ignored
+    found = find_data_files([str(tmp_path)])
+    assert found["offers"].endswith("Offers.xlsx") and not found["offers"].endswith("~$Offers.xlsx")
+    off = load_offers(found["offers"])
+    assert off.sku.unique().tolist() == ["12345"] and off.offer_id.tolist() == ["1", "2", "3", "6"]
+    assert off.day.iloc[0] == pd.Timestamp("2025-10-20")
+    sal = load_sales(found["sales"])
+    assert len(sal) == 1 and sal.day.iloc[0] == pd.Timestamp("2025-10-19")
+    assert len(load_products(found["products"])) == 2
+
+
+def test_csv_preferred_over_xlsx(tmp_path):
+    (tmp_path / "Offers.csv").write_text(OFFERS)
+    pd.read_csv(io.StringIO(OFFERS), dtype=str).to_excel(tmp_path / "Offers.xlsx", index=False)
+    (tmp_path / "Product Information.csv").write_text(PRODUCTS)
+    (tmp_path / "Sales Order Line items.csv").write_text(SALES)
+    assert find_data_files([str(tmp_path)])["offers"].endswith("Offers.csv")

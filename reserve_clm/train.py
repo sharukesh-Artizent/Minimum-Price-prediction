@@ -16,34 +16,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-try:
-    from clm.heads import make_head
-except ImportError:
-    def make_head(width: int, depth: int = 2, proj: int = 512, activation: str = "gelu",
-                  layernorm: bool = False, residual: bool = False, hidden: int = 4096):
-        """Fallback matching clm.heads.make_head architecture when clm is not installed."""
-        act_map = {"gelu": nn.GELU, "relu": nn.ReLU, "silu": nn.SiLU}
-        act = act_map.get(activation.lower(), nn.GELU)
-
-        class Head(nn.Module):
-            def __init__(self):
-                super().__init__()
-                self.inp = nn.Linear(hidden, width)
-                self.hidden = nn.ModuleList(nn.Linear(width, width) for _ in range(depth - 2))
-                self.norms = nn.ModuleList((nn.LayerNorm(width) if layernorm else nn.Identity())
-                                           for _ in range(depth - 2))
-                self.out = nn.Linear(width, proj)
-                self.act = act()
-                self.residual = residual
-
-            def forward(self, x):
-                x = self.act(self.inp(x))
-                for lin, nrm in zip(self.hidden, self.norms):
-                    h = self.act(nrm(lin(x)))
-                    x = x + h if self.residual else h
-                return self.out(x)
-
-        return Head()
 
 
 @dataclass
@@ -71,6 +43,7 @@ class HeadModel(nn.Module):
 
 
 def build_model(hidden: int, cfg: TrainConfig, init_ckpt: str | None = None) -> tuple[HeadModel, dict, bool]:
+    from clm.heads import make_head  # fail loudly if the CLM package is missing
     head_cfg = dict(width=cfg.width, depth=cfg.depth, proj=cfg.proj, activation="gelu",
                     layernorm=True, residual=False, hidden=hidden)
     ck = torch.load(init_ckpt, map_location="cpu", weights_only=False) if init_ckpt else None
@@ -205,19 +178,3 @@ def save_checkpoint(res: TrainResult, path: str) -> None:
         "epoch": res.best_epoch,
         "metrics": {"val_interval_hit_rate": res.best_score},
     }, path)
-
-
-def load_checkpoint(path: str, hidden: int | None = None, cfg: TrainConfig | None = None) -> tuple[HeadModel, dict, bool]:
-    """Load a checkpoint created by save_checkpoint or CLM."""
-    if hidden is None:
-        ck = torch.load(path, map_location="cpu", weights_only=False)
-        hidden = ck["state_head"]["inp.weight"].shape[1]
-    return build_model(hidden, cfg or TrainConfig(), init_ckpt=path)
-
-
-# Compatibility aliases
-CLMHeadModel = HeadModel
-soft_infonce_loss = soft_infonce
-predict_probs = predict_proba
-save_heads = save_checkpoint
-load_heads = load_checkpoint

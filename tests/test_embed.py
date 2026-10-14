@@ -29,3 +29,21 @@ def test_embed_empty_list(tmp_path):
     assert v.shape == (0, e.hidden)
     assert v.dtype == np.float32
     e.close()
+
+
+def test_fully_cached_run_never_loads_the_model(tmp_path):
+    cache = tmp_path / "c.npz"
+    texts = ["alpha text", "beta text about phones"]
+    e = QwenEmbedder(MODEL, max_len=64, batch_size=2, cache_path=str(cache), log=lambda *_: None)
+    first = e.embed(texts)
+    e.close()
+    again = QwenEmbedder(MODEL, max_len=64, batch_size=2, cache_path=str(cache), log=lambda *_: None)
+    np.testing.assert_array_equal(again.embed(texts), first)
+    assert again.model is None and again.hidden == first.shape[1]   # served from the cache file only
+
+
+def test_explicit_device_without_accelerate_device_map(tmp_path):
+    e = QwenEmbedder(MODEL, max_len=64, batch_size=2, cache_path=str(tmp_path / "d.npz"), device="cpu",
+                     log=lambda *_: None)
+    v = e.embed(["device test"])
+    assert v.shape == (1, e.hidden) and str(e.device) == "cpu"

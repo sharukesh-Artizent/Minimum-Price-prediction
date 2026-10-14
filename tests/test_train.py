@@ -2,17 +2,11 @@ import numpy as np
 import torch
 
 from reserve_clm.train import (
-    CLMHeadModel,
-    HeadModel,
     TrainConfig,
     build_model,
-    load_heads,
     predict_proba,
-    predict_probs,
     save_checkpoint,
-    save_heads,
     soft_infonce,
-    soft_infonce_loss,
     train_heads,
 )
 
@@ -57,29 +51,6 @@ def test_checkpoint_round_trip_warm_starts(tmp_path):
     np.testing.assert_allclose(predict_proba(model, x, centers), predict_proba(res.model, x, centers), atol=1e-5)
     _, _, warm2 = build_model(24, cfg, init_ckpt=str(path))    # width mismatch -> fresh heads
     assert not warm2
-
-
-def test_aliases_and_serialization_helpers(tmp_path):
-    assert CLMHeadModel is HeadModel
-    assert soft_infonce_loss is soft_infonce
-    assert predict_probs is predict_proba
-    assert save_heads is save_checkpoint
-
-    rng = np.random.default_rng(42)
-    centers = rng.standard_normal((5, 8)).astype(np.float32)
-    x, y = _data(50, rng, centers)
-    t = np.eye(5, dtype=np.float32)[y]
-    cfg = TrainConfig(epochs=1, batch=32, width=16, depth=2, proj=4)
-    res = train_heads(x, t, centers, x, lambda p: 0.0, cfg, log=lambda *_: None)
-    path = tmp_path / "model.pt"
-    save_heads(res, str(path))
-
-    # load_heads with hidden=None (inferred from checkpoint)
-    m1, c1, w1 = load_heads(str(path))
-    assert w1 and c1["hidden"] == 8
-    p1 = predict_probs(m1, x, centers)
-    p0 = predict_proba(res.model, x, centers)
-    np.testing.assert_allclose(p1, p0, atol=1e-5)
 
 
 def test_early_stopping():

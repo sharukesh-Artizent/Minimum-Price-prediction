@@ -34,32 +34,45 @@ def interval_metrics(price, lo, hi, mid) -> dict:
 def band_metrics(pred_band, true_band) -> dict:
     p, t = np.asarray(pred_band, dtype=int), np.asarray(true_band, dtype=int)
     if len(p) == 0:
-        return {"band_exact": NAN, "band_within_1": NAN, "band_mae": NAN}
+        return {"band_exact": NAN, "band_within_1": NAN, "band_within_3": NAN, "band_within_5": NAN, "band_mae": NAN}
     d = np.abs(p - t)
     return {
         "band_exact": float((d == 0).mean()),
         "band_within_1": float((d <= 1).mean()),
+        "band_within_3": float((d <= 3).mean()),
+        "band_within_5": float((d <= 5).mean()),
         "band_mae": float(d.mean()),
     }
 
 
 def replay(offers: pd.DataFrame, groups: pd.DataFrame) -> dict:
-    """Accept every offer whose bid >= the group's reserve; compare with Assurant's OFFER_STATUS."""
-    m = offers.merge(groups[["sku", "wh", "day", "reserve"]], on=["sku", "wh", "day"], how="inner")
+    """Use each group's reserve as that day's base price: accept every offer with bid >= reserve.
+
+    Compared with Assurant's OFFER_STATUS per offer and per SKU x warehouse x day.
+    """
+    keys = ["sku", "wh", "day"]
+    m = offers.merge(groups[keys + ["reserve"]], on=keys, how="inner")
     out = {"n_groups": int(len(groups)), "n_offers": int(len(m))}
     if m.empty:
         return out
-    pred = (m.price >= m.reserve).to_numpy()
-    act = m.accepted.to_numpy(dtype=bool)
-    value = (m.price * m.qty).to_numpy()
+    m = m.assign(pred=(m.price >= m.reserve).to_numpy(), act=m.accepted.to_numpy(dtype=bool))
+    m["agree"] = m.pred == m.act
+    pred, act = m.pred.to_numpy(), m.act.to_numpy()
+    both = int((pred & act).sum())
+    day = m.groupby(keys).agg(pred_n=("pred", "sum"), act_n=("act", "sum"), exact=("agree", "all"))
     out.update(
-        agreement=float((pred == act).mean()),
+        agreement=float(m.agree.mean()),
         lost_sales_rate=float((~pred & act).mean()),
         underpricing_rate=float((pred & ~act).mean()),
         pred_accept_rate=float(pred.mean()),
         actual_accept_rate=float(act.mean()),
-        accepted_value_pred=float(value[pred].sum()),
-        accepted_value_actual=float(value[act].sum()),
+        accept_precision=both / pred.sum() if pred.any() else NAN,
+        accept_recall=both / act.sum() if act.any() else NAN,
+        n_days=int(len(day)),
+        day_exact_match=float(day.exact.mean()),
+        day_count_mae=float((day.pred_n - day.act_n).abs().mean()),
+        accepted_per_day_pred=float(day.pred_n.mean()),
+        accepted_per_day_actual=float(day.act_n.mean()),
     )
     return out
 
@@ -89,10 +102,3 @@ def band_ece(probs, true_band, n_bins: int = 10) -> float:
         if m.any():
             ece += m.mean() * abs(correct[m].mean() - conf[m].mean())
     return float(ece)
-
-
-# Convenience aliases
-eval_intervals = interval_metrics
-eval_bands = band_metrics
-eval_replay = replay
-eval_calibration = calibration_table

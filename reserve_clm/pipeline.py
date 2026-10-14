@@ -15,7 +15,8 @@ from .data import find_data_files, load_offers, load_products, load_sales
 from .evaluate import band_ece, calibration_table, decode_bands, interval_metrics
 from .features import build_features
 from .labels import assign_split, floor_intervals
-from .report import breakdowns, method_ratios, prediction_examples, replay_table, score_table
+from .report import (acceptance_table, breakdowns, method_ratios, prediction_examples, replay_table,
+                     score_table)
 from .text import band_descriptions, state_text
 from .train import TrainConfig, predict_proba, save_checkpoint, train_heads
 
@@ -34,6 +35,7 @@ class RunConfig:
     replay_max_groups: int = 20000
     init_ckpt: str | None = None
     smoke_rows: int | None = None        # subsample labels per split (quick runs only)
+    device: str | None = None            # e.g. "cuda:1"; used for embedding and training (default: first GPU)
 
 
 @dataclass
@@ -96,7 +98,7 @@ def embed_all(prep: Prepared, cfg: RunConfig, embedder=None, log=print):
     created = embedder is None
     if created:
         slug = cfg.embed_model.replace("/", "_")
-        embedder = QwenEmbedder(cfg.embed_model, cfg.max_len, cfg.embed_batch, log=log,
+        embedder = QwenEmbedder(cfg.embed_model, cfg.max_len, cfg.embed_batch, log=log, device=cfg.device,
                                 cache_path=os.path.join(cfg.work_dir, f"embed_cache_{slug}_{cfg.max_len}.npz"))
     log(f"[embed] {len(texts):,} unique texts")
     vecs = embedder.embed(texts)
@@ -124,7 +126,8 @@ def run_training(V: dict, E: dict, cfg: RunConfig, log=print) -> list[dict]:
     runs = []
     for seed in cfg.seeds:
         res = train_heads(E["train"], t_tr, E["bands"], E["val"], val_score,
-                          dataclasses.replace(cfg.train, seed=seed), init_ckpt=cfg.init_ckpt, log=log)
+                          dataclasses.replace(cfg.train, seed=seed), init_ckpt=cfg.init_ckpt,
+                          device=cfg.device, log=log)
         save_checkpoint(res, os.path.join(cfg.work_dir, f"head_seed{seed}.pt"))
         probs = {k: predict_proba(res.model, E[k], E["bands"]) for k in ("val", "test", "test_fallback", "replay")}
         runs.append({"seed": seed, "result": res, "probs": probs})
@@ -150,6 +153,8 @@ def evaluate_all(prep: Prepared, V: dict, runs: list[dict]) -> dict[str, pd.Data
         "training": training,
         "headline_test": score_table(test, ratios),
         "headline_fallback": score_table(fb, fb_ratios),
+        "acceptance_test": acceptance_table(test, offers_test, ratios),
+        "acceptance_fallback": acceptance_table(fb, offers_test, fb_ratios),
         "replay": replay_table(prep.replay, offers_test, train_df, runs),
         "calibration": calibration_table(ens.max(1) if len(ens) else [], hit(test, ens_ratio)),
         "band_ece": pd.DataFrame([{"split": "test", "band_ece": band_ece(ens, test.true_band.to_numpy())}]),

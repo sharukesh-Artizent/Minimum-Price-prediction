@@ -54,6 +54,15 @@ def replay_table(rep: pd.DataFrame, offers: pd.DataFrame, train_df: pd.DataFrame
     return pd.DataFrame(rows)
 
 
+def acceptance_table(df: pd.DataFrame, offers: pd.DataFrame, ratios: dict[str, np.ndarray]) -> pd.DataFrame:
+    """Daily acceptance on the labelled days themselves (reserve = market price x method ratio)."""
+    rows = []
+    for name, r in ratios.items():
+        groups = df[KEYS3].assign(reserve=df.ref_price.to_numpy() * r)
+        rows.append({"method": name, **replay(offers, groups)})
+    return pd.DataFrame(rows)
+
+
 def breakdowns(df: pd.DataFrame, hits: dict[str, np.ndarray]) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame()
